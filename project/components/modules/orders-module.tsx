@@ -40,7 +40,8 @@ import {
   Banknote,
   Wallet,
 } from 'lucide-react';
-import { orders, patients, products } from '@/lib/mock-data';
+import { useData } from '@/hooks/useData';
+import { getPatients } from '@/lib/db';
 import { formatCurrency, formatDate } from '@/lib/format';
 import type { Order, OrderStatus } from '@/lib/types';
 
