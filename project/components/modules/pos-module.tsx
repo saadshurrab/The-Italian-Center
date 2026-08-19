@@ -92,6 +92,7 @@ export function PosModule() {
       setTimeout(() => setScanError(''), 3000);
     }
     setBarcodeInput('');
+    barcodeRef.current?.focus();
   }
 
   function addToCart(product: Product) {
@@ -117,9 +118,10 @@ export function PosModule() {
   }
 
   function updateDiscount(productId: string, discount: number) {
+    const validDiscount = isNaN(discount) ? 0 : Math.max(0, Math.min(100, discount));
     setCart((prev) =>
       prev.map((c) =>
-        c.product.id === productId ? { ...c, discount: Math.max(0, Math.min(100, discount)) } : c
+        c.product.id === productId ? { ...c, discount: validDiscount } : c
       )
     );
   }
@@ -139,6 +141,7 @@ export function PosModule() {
     setDeposit('');
     setPaymentMethod('cash');
     setInvoiceOpen(false);
+    setTimeout(() => barcodeRef.current?.focus(), 100);
   }
 
   return (
@@ -310,8 +313,8 @@ export function PosModule() {
                           <Input
                             type="number"
                             placeholder="خصم %"
-                            value={item.discount || ''}
-                            onChange={(e) => updateDiscount(item.product.id, parseFloat(e.target.value) || 0)}
+                            value={item.discount === 0 ? '' : item.discount}
+                            onChange={(e) => updateDiscount(item.product.id, parseFloat(e.target.value))}
                             className="h-7 w-16 text-center text-xs"
                           />
                           <span className="text-xs text-muted-foreground">%</span>
