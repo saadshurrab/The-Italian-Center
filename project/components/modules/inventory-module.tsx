@@ -55,7 +55,8 @@ const categoryConfig: Record<ProductCategory, { label: string; icon: typeof Glas
 };
 
 export function InventoryModule() {
-  const { data: products = [], loading, error } = useData<Product>(getProducts);
+  const { data: rawProducts = [], loading, error } = useData<Product>(getProducts);
+  const products = rawProducts || [];
 
   const [search, setSearch] = useState('');
   const [catFilter, setCatFilter] = useState<string>('all');
@@ -186,7 +187,7 @@ export function InventoryModule() {
               </CardHeader>
               <CardContent className="space-y-3">
                 {expiringSoon.map((item) => {
-                  const days = daysUntil(item.expiryDate!);
+                  const days = item.expiryDate ? daysUntil(item.expiryDate) : 0;
                   return (
                     <div key={item.id} className="flex items-center justify-between rounded-lg border border-destructive/20 bg-destructive/5 p-3">
                       <div>
