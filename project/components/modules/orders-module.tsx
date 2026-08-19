@@ -41,9 +41,9 @@ import {
   Wallet,
 } from 'lucide-react';
 import { useData } from '@/hooks/useData';
-import { getPatients } from '@/lib/db';
+import { getPatients, getOrders, getProducts } from '@/lib/db';
 import { formatCurrency, formatDate } from '@/lib/format';
-import type { Order, OrderStatus } from '@/lib/types';
+import type { Order, OrderStatus, Product } from '@/lib/types';
 
 const statusConfig: Record<OrderStatus, { label: string; icon: typeof Clock; color: string; step: number }> = {
   pending: { label: 'قيد الانتظار', icon: Clock, color: 'warning', step: 0 },
@@ -60,6 +60,7 @@ const paymentIcons: Record<string, typeof CreditCard> = {
 };
 
 export function OrdersModule() {
+  const { data: orders = [], loading, error } = useData<Order>(getOrders);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [page, setPage] = useState(0);
@@ -69,11 +70,11 @@ export function OrdersModule() {
 
   const filtered = useMemo(() => {
     return orders.filter((o) => {
-      const matchSearch = o.patientName.includes(search) || o.id.includes(search);
+      const matchSearch = o.patientName?.includes(search) || o.id?.includes(search);
       const matchStatus = statusFilter === 'all' || o.status === statusFilter;
       return matchSearch && matchStatus;
     });
-  }, [search, statusFilter]);
+  }, [orders, search, statusFilter]);
 
   const paginated = filtered.slice(page * pageSize, (page + 1) * pageSize);
   const totalPages = Math.ceil(filtered.length / pageSize);
@@ -82,6 +83,9 @@ export function OrdersModule() {
     ...statusConfig[s],
     count: orders.filter((o) => o.status === s).length,
   }));
+
+  if (loading) return <p className="p-4 text-center">جاري تحميل البيانات...</p>;
+  if (error) return <p className="p-4 text-center text-red-500">حدث خطأ: {error}</p>;
 
   return (
     <div className="space-y-6">
@@ -272,7 +276,7 @@ function OrderDetail({ order }: { order: Order }) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {order.items.map((item, i) => (
+            {order.items?.map((item, i) => (
               <TableRow key={i}>
                 <TableCell className="font-medium">{item.name}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{item.type}</TableCell>
@@ -313,6 +317,9 @@ function OrderDetail({ order }: { order: Order }) {
 }
 
 function NewOrderForm({ onClose }: { onClose: () => void }) {
+  const { data: patients = [] } = useData(getPatients);
+  const { data: products = [] } = useData<Product>(getProducts);
+
   const [patientId, setPatientId] = useState('');
   const [deposit, setDeposit] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('نقداً');
