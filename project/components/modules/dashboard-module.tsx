@@ -26,7 +26,6 @@ import {
 import { formatCurrency, formatNumber } from '@/lib/format';
 import { useData } from '@/hooks/useData';
 import { getOrders, getProducts, getEmployees, getPrescriptions } from '@/lib/db';
-import { revenueData, orderPipelineData } from '@/lib/mock-data';
 import type { Order, Product, Employee, Prescription } from '@/lib/types';
 import {
   AreaChart,
@@ -40,6 +39,24 @@ import {
   Bar,
   Cell,
 } from 'recharts';
+
+// البيانات المؤقتة الخاصة بالرسوم البيانية محلياً تجنباً لخطأ المستوردات
+const revenueData = [
+  { day: 'السبت', revenue: 3200 },
+  { day: 'الأحد', revenue: 4500 },
+  { day: 'الإثنين', revenue: 5100 },
+  { day: 'الثلاثاء', revenue: 4800 },
+  { day: 'الأربعاء', revenue: 6200 },
+  { day: 'الخميس', revenue: 7500 },
+  { day: 'الجمعة', revenue: 4100 },
+];
+
+const orderPipelineData = [
+  { stage: 'قيد الانتظار', count: 5, color: 'warning' },
+  { stage: 'في المختبر', count: 8, color: 'primary' },
+  { stage: 'جاهز', count: 4, color: 'accent' },
+  { stage: 'مكتمل', count: 12, color: 'success' },
+];
 
 export function DashboardModule() {
   const { data: orders = [] } = useData<Order>(getOrders);
@@ -99,7 +116,7 @@ export function DashboardModule() {
     <div className="space-y-6">
       <div className="flex flex-col gap-1">
         <h2 className="font-display text-2xl font-bold">لوحة التحكم الرئيسية</h2>
-        <p className="text-sm text-muted-foreground">نظرة عامة على أداء المركز الإيطالي للبصريات اليوم</p>
+        <p className="text-sm text-muted-foreground">نظرة عامة على أداء النظام اليوم</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
