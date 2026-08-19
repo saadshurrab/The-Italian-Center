@@ -36,6 +36,7 @@ import {
   ChevronLeft,
   CircleDot,
 } from 'lucide-react';
+
 import { DashboardModule } from '@/components/modules/dashboard-module';
 import { PosModule } from '@/components/modules/pos-module';
 import { ExaminationsModule } from '@/components/modules/examinations-module';
@@ -50,10 +51,12 @@ export function AppShell() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const { data: notifications = [] } = useData<Notification>(getNotifications);
+  // إعطاء قيمة افتراضية مسبقة مأمنة لتفادي خطأ undefined أثناء التحميل
+  const { data: notificationsData } = useData<Notification>(getNotifications);
+  const notifications = Array.isArray(notificationsData) ? notificationsData : [];
 
-  const activeItem = navItems.find((item) => item.key === activeModule) || navItems[0];
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const activeItem = navItems?.find((item) => item.key === activeModule) || navItems?.[0] || { label: '' };
+  const unreadCount = notifications.filter((n) => n && !n.read).length;
 
   const SidebarContent = () => (
     <div className="flex h-full flex-col bg-navy text-white">
@@ -68,7 +71,7 @@ export function AppShell() {
       </div>
 
       <nav className="flex-1 space-y-1.5 overflow-y-auto scrollbar-thin px-3 py-4">
-        {navItems.map((item) => {
+        {(navItems || []).map((item) => {
           const Icon = item.icon;
           const isActive = activeModule === item.key;
           return (
@@ -85,7 +88,7 @@ export function AppShell() {
                   : 'text-white/70 hover:bg-white/10 hover:text-white'
               )}
             >
-              <Icon className={cn('h-5 w-5 shrink-0 transition-transform', isActive && 'scale-110')} />
+              {Icon && <Icon className={cn('h-5 w-5 shrink-0 transition-transform', isActive && 'scale-110')} />}
               <div className="flex-1 text-right">
                 <span className="block">{item.label}</span>
               </div>
