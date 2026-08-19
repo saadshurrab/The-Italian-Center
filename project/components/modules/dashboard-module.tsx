@@ -10,7 +10,6 @@ import {
   TrendingDown,
   DollarSign,
   Eye,
-  Package,
   Users,
   Clock,
   Wrench,
@@ -24,8 +23,11 @@ import {
   CalendarClock,
   ScanBarcode,
 } from 'lucide-react';
-import { formatCurrency, formatNumber, formatDate } from '@/lib/format';
-import { orders, products, employees, revenueData, orderPipelineData, prescriptions } from '@/lib/mock-data';
+import { formatCurrency, formatNumber } from '@/lib/format';
+import { useData } from '@/hooks/useData';
+import { getOrders, getProducts, getEmployees, getPrescriptions } from '@/lib/db';
+import { revenueData, orderPipelineData } from '@/lib/mock-data';
+import type { Order, Product, Employee, Prescription } from '@/lib/types';
 import {
   AreaChart,
   Area,
@@ -40,9 +42,14 @@ import {
 } from 'recharts';
 
 export function DashboardModule() {
-  const todayRevenue = 8900;
+  const { data: orders = [] } = useData<Order>(getOrders);
+  const { data: products = [] } = useData<Product>(getProducts);
+  const { data: employees = [] } = useData<Employee>(getEmployees);
+  const { data: prescriptions = [] } = useData<Prescription>(getPrescriptions);
+
+  const todayRevenue = orders.reduce((sum, o) => sum + (o.deposit || 0), 0);
   const pendingLabOrders = orders.filter((o) => o.status === 'in_lab').length;
-  const todayExams = prescriptions.filter((p) => p.date === '2026-08-15').length + 1;
+  const todayExams = prescriptions.length;
   const activeStaff = employees.filter((e) => e.status === 'active').length;
   const lowStockItems = products.filter((p) => p.stock <= p.minStock);
 
@@ -72,9 +79,9 @@ export function DashboardModule() {
       color: 'accent',
     },
     {
-      label: 'موظفين في الخدمة',
+      label: 'موظفون في الخدمة',
       value: formatNumber(activeStaff),
-      change: 'من 6',
+      change: `من ${employees.length}`,
       trend: 'neutral' as 'up' | 'down' | 'neutral',
       icon: Users,
       color: 'success',
@@ -92,7 +99,7 @@ export function DashboardModule() {
     <div className="space-y-6">
       <div className="flex flex-col gap-1">
         <h2 className="font-display text-2xl font-bold">لوحة التحكم الرئيسية</h2>
-        <p className="text-sm text-muted-foreground">نظرة عامة على أداء المركز اليوم</p>
+        <p className="text-sm text-muted-foreground">نظرة عامة على أداء المركز الإيطالي للبصريات اليوم</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -222,7 +229,7 @@ export function DashboardModule() {
               </div>
             ))}
             {lowStockItems.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-4">لا توجد تنبيهات</p>
+              <p className="text-sm text-muted-foreground text-center py-4">لا توجد تنبيهات للمخزون حالياً</p>
             )}
           </CardContent>
         </Card>
@@ -233,7 +240,7 @@ export function DashboardModule() {
           </CardHeader>
           <CardContent className="space-y-3">
             {orders.slice(0, 4).map((order) => {
-              const cfg = statusConfig[order.status];
+              const cfg = statusConfig[order.status] || statusConfig.pending;
               const StatusIcon = cfg.icon;
               return (
                 <div key={order.id} className="flex items-center gap-3">
@@ -248,6 +255,9 @@ export function DashboardModule() {
                 </div>
               );
             })}
+            {orders.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4">لا توجد طلبات حتى الآن</p>
+            )}
           </CardContent>
         </Card>
 
@@ -260,7 +270,7 @@ export function DashboardModule() {
               <div key={emp.id} className="flex items-center gap-3">
                 <Avatar className="h-9 w-9">
                   <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
-                    {emp.name.split(' ')[1]?.[0]}
+                    {emp.name.split(' ')[1]?.[0] || emp.name[0]}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
@@ -270,6 +280,9 @@ export function DashboardModule() {
                 <span className="h-2 w-2 rounded-full bg-success" />
               </div>
             ))}
+            {employees.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4">لا يوجد موظفون في الخدمة حالياً</p>
+            )}
           </CardContent>
         </Card>
       </div>
