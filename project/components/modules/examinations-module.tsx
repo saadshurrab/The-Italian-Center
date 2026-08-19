@@ -30,9 +30,10 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Eye, Plus, FileDown, History, Search, Stethoscope, Glasses, Sun, Contact } from 'lucide-react';
-import { prescriptions, patients } from '@/lib/mock-data';
+import { useData } from '@/hooks/useData';
+import { getPrescriptions, getPatients } from '@/lib/db';
 import { formatDate } from '@/lib/format';
-import type { Prescription, PrescriptionType } from '@/lib/types';
+import type { Prescription, PrescriptionType, Patient } from '@/lib/types';
 
 const typeConfig: Record<PrescriptionType, { label: string; icon: typeof Glasses; color: string }> = {
   medical: { label: 'إطار طبي', icon: Glasses, color: 'primary' },
@@ -75,6 +76,7 @@ function EyeRxField({ label, eye, onChange }: { label: string; eye: any; onChang
 }
 
 export function ExaminationsModule() {
+  const { data: prescriptions = [], loading, error } = useData<Prescription>(getPrescriptions);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [open, setOpen] = useState(false);
@@ -84,14 +86,17 @@ export function ExaminationsModule() {
 
   const filtered = useMemo(() => {
     return prescriptions.filter((rx) => {
-      const matchSearch = rx.patientName.includes(search) || rx.id.includes(search);
+      const matchSearch = rx.patientName?.includes(search) || rx.id?.includes(search);
       const matchType = typeFilter === 'all' || rx.type === typeFilter;
       return matchSearch && matchType;
     });
-  }, [search, typeFilter]);
+  }, [prescriptions, search, typeFilter]);
 
   const paginated = filtered.slice(page * pageSize, (page + 1) * pageSize);
   const totalPages = Math.ceil(filtered.length / pageSize);
+
+  if (loading) return <p className="p-4 text-center">جاري تحميل البيانات...</p>;
+  if (error) return <p className="p-4 text-center text-red-500">حدث خطأ: {error}</p>;
 
   return (
     <div className="space-y-6">
@@ -230,6 +235,7 @@ export function ExaminationsModule() {
 }
 
 function NewExamForm({ onClose }: { onClose: () => void }) {
+  const { data: patients = [] } = useData<Patient>(getPatients);
   const [patientId, setPatientId] = useState('');
   const [type, setType] = useState<PrescriptionType>('medical');
   const [doctor, setDoctor] = useState('');
@@ -297,11 +303,11 @@ function PrescriptionDetail({ rx }: { rx: Prescription }) {
   const cfg = typeConfig[rx.type];
   const Icon = cfg.icon;
   const eyeRows = [
-    { label: 'SPH', right: rx.rightEye.sph, left: rx.leftEye.sph },
-    { label: 'CYL', right: rx.rightEye.cyl, left: rx.leftEye.cyl },
-    { label: 'AXIS', right: rx.rightEye.axis, left: rx.leftEye.axis },
-    { label: 'ADD', right: rx.rightEye.add, left: rx.leftEye.add },
-    { label: 'PD', right: rx.rightEye.pd, left: rx.leftEye.pd },
+    { label: 'SPH', right: rx.rightEye?.sph, left: rx.leftEye?.sph },
+    { label: 'CYL', right: rx.rightEye?.cyl, left: rx.leftEye?.cyl },
+    { label: 'AXIS', right: rx.rightEye?.axis, left: rx.leftEye?.axis },
+    { label: 'ADD', right: rx.rightEye?.add, left: rx.leftEye?.add },
+    { label: 'PD', right: rx.rightEye?.pd, left: rx.leftEye?.pd },
   ];
 
   return (
