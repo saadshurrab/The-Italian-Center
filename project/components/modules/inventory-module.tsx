@@ -40,6 +40,7 @@ import {
   AlertTriangle,
   CalendarClock,
   Boxes,
+  Edit2,
 } from 'lucide-react';
 import { useData } from '@/hooks/useData';
 import { getProducts } from '@/lib/db';
@@ -78,7 +79,7 @@ export function InventoryModule() {
   const paginated = filtered.slice(page * pageSize, (page + 1) * pageSize);
   const totalPages = Math.ceil(filtered.length / pageSize) || 1;
 
-  const lowStock = useMemo(() => products.filter((p) => p.stock <= p.minStock), [products]);
+  const lowStock = useMemo(() => products.filter((p) => (p.stock || 0) <= (p.minStock || 0)), [products]);
   const expiringSoon = useMemo(() => products.filter((p) => p.expiryDate && daysUntil(p.expiryDate) < 90), [products]);
   const totalValue = useMemo(() => products.reduce((s, p) => s + (p.stock || 0) * (p.cost || 0), 0), [products]);
 
@@ -287,7 +288,9 @@ export function InventoryModule() {
                       <TableCell className="text-sm text-muted-foreground">{formatCurrency(p.cost)}</TableCell>
                       <TableCell className="text-sm font-semibold">{formatCurrency(p.retail)}</TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="sm">تعديل</Button>
+                        <Button variant="ghost" size="sm" className="gap-1">
+                          <Edit2 className="h-3.5 w-3.5" /> تعديل
+                        </Button>
                       </TableCell>
                     </TableRow>
                   );
@@ -324,7 +327,7 @@ export function InventoryModule() {
 function ProductDetail({ product }: { product: Product }) {
   const cfg = categoryConfig[product.category] || { label: product.category, icon: Package, color: 'primary' };
   const Icon = cfg.icon;
-  const margin = product.retail ? (((product.retail - product.cost) / product.retail) * 100).toFixed(0) : '0';
+  const margin = product.retail && product.cost ? (((product.retail - product.cost) / product.retail) * 100).toFixed(0) : '0';
 
   return (
     <div className="space-y-4">
@@ -337,9 +340,9 @@ function ProductDetail({ product }: { product: Product }) {
         </DialogTitle>
       </DialogHeader>
       <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-lg bg-secondary/50 p-3"><p className="text-xs text-muted-foreground">الباركود</p><p className="font-mono text-sm font-medium">{product.barcode}</p></div>
-        <div className="rounded-lg bg-secondary/50 p-3"><p className="text-xs text-muted-foreground">SKU</p><p className="font-mono text-sm font-medium">{product.sku}</p></div>
-        <div className="rounded-lg bg-secondary/50 p-3"><p className="text-xs text-muted-foreground">العلامة التجارية</p><p className="text-sm font-medium">{product.brand}</p></div>
+        <div className="rounded-lg bg-secondary/50 p-3"><p className="text-xs text-muted-foreground">الباركود</p><p className="font-mono text-sm font-medium">{product.barcode || '-'}</p></div>
+        <div className="rounded-lg bg-secondary/50 p-3"><p className="text-xs text-muted-foreground">SKU</p><p className="font-mono text-sm font-medium">{product.sku || '-'}</p></div>
+        <div className="rounded-lg bg-secondary/50 p-3"><p className="text-xs text-muted-foreground">العلامة التجارية</p><p className="text-sm font-medium">{product.brand || '-'}</p></div>
         <div className="rounded-lg bg-secondary/50 p-3"><p className="text-xs text-muted-foreground">المخزون</p><p className="text-sm font-medium">{product.stock} قطعة</p></div>
         <div className="rounded-lg bg-secondary/50 p-3"><p className="text-xs text-muted-foreground">الحد الأدنى</p><p className="text-sm font-medium">{product.minStock} قطعة</p></div>
         <div className="rounded-lg bg-secondary/50 p-3"><p className="text-xs text-muted-foreground">التكلفة</p><p className="text-sm font-medium">{formatCurrency(product.cost)}</p></div>
@@ -367,6 +370,7 @@ function AddProductForm({ onClose }: { onClose: () => void }) {
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div><Label>SKU</Label><Input className="mt-1" placeholder="رمز المنتج" /></div>
+        <div><Label>المورد</Label><Input className="mt-1" placeholder="اسم المورد" /></div>
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
