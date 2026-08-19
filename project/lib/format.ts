@@ -1,4 +1,5 @@
 export function formatCurrency(amount: number): string {
+  if (amount === undefined || amount === null || isNaN(amount)) return '0 ₪';
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'ILS',
@@ -8,33 +9,44 @@ export function formatCurrency(amount: number): string {
 }
 
 export function formatNumber(num: number): string {
+  if (num === undefined || num === null || isNaN(num)) return '0';
   return new Intl.NumberFormat('en-US').format(num);
 }
 
 export function formatDate(date: string): string {
+  if (!date) return '-';
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '-';
   return new Intl.DateTimeFormat('en-GB', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
-  }).format(new Date(date));
+  }).format(d);
 }
 
 export function formatDateTime(date: string): string {
+  if (!date) return '-';
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '-';
   return new Intl.DateTimeFormat('en-GB', {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
-  }).format(new Date(date));
+  }).format(d);
 }
 
 export function daysUntil(date: string): number {
-  const diff = new Date(date).getTime() - new Date().getTime();
+  if (!date) return 0;
+  const targetDate = new Date(date).getTime();
+  if (isNaN(targetDate)) return 0;
+  const diff = targetDate - new Date().getTime();
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
 }
 
 export function getInitials(name: string): string {
-  const parts = name.split(' ');
-  return parts.slice(0, 2).map((p) => p[0]).join('');
+  if (!name) return '';
+  const parts = name.trim().split(/\s+/);
+  return parts.slice(0, 2).map((p) => p[0] || '').join('');
 }
