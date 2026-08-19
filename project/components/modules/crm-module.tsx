@@ -41,29 +41,33 @@ import {
   Eye,
   MessageCircle,
   Bell,
-  Clock,
   DollarSign,
   FileText,
   UserPlus,
 } from 'lucide-react';
-import { patients, prescriptions, orders } from '@/lib/mock-data';
+import { useData } from '@/hooks/useData';
+import { getPatients, getPrescriptions, getOrders } from '@/lib/db';
 import { formatCurrency, formatDate } from '@/lib/format';
-import type { Patient } from '@/lib/types';
+import type { Patient, Prescription, Order } from '@/lib/types';
 
 export function CrmModule() {
   const [search, setSearch] = useState('');
   const [addOpen, setAddOpen] = useState(false);
   const [detail, setDetail] = useState<Patient | null>(null);
 
+  const { data: patients = [] } = useData<Patient>(getPatients);
+
   const filtered = useMemo(() => {
     return patients.filter((p) =>
       p.name.includes(search) || p.phone.includes(search) || p.id.includes(search)
     );
-  }, [search]);
+  }, [patients, search]);
 
   const totalPatients = patients.length;
-  const totalRevenue = patients.reduce((s, p) => s + p.totalSpent, 0);
-  const avgVisits = (patients.reduce((s, p) => s + p.totalVisits, 0) / totalPatients).toFixed(1);
+  const totalRevenue = patients.reduce((s, p) => s + (p.totalSpent || 0), 0);
+  const avgVisits = totalPatients > 0 
+    ? (patients.reduce((s, p) => s + (p.totalVisits || 0), 0) / totalPatients).toFixed(1) 
+    : '0';
 
   return (
     <div className="space-y-6">
@@ -151,7 +155,7 @@ export function CrmModule() {
                       <div className="flex items-center gap-2">
                         <Avatar className="h-9 w-9">
                           <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
-                            {p.name.split(' ')[1]?.[0]}
+                            {p.name.split(' ')[1]?.[0] || p.name[0]}
                           </AvatarFallback>
                         </Avatar>
                         <div>
@@ -189,6 +193,9 @@ export function CrmModule() {
 }
 
 function PatientDetail({ patient: p }: { patient: Patient }) {
+  const { data: prescriptions = [] } = useData<Prescription>(getPrescriptions);
+  const { data: orders = [] } = useData<Order>(getOrders);
+
   const patientRx = prescriptions.filter((rx) => rx.patientId === p.id);
   const patientOrders = orders.filter((o) => o.patientId === p.id);
 
@@ -198,7 +205,7 @@ function PatientDetail({ patient: p }: { patient: Patient }) {
         <DialogTitle className="flex items-center gap-3">
           <Avatar className="h-12 w-12 border-2 border-primary/20">
             <AvatarFallback className="bg-primary/10 text-primary font-bold">
-              {p.name.split(' ')[1]?.[0]}
+              {p.name.split(' ')[1]?.[0] || p.name[0]}
             </AvatarFallback>
           </Avatar>
           <div>
@@ -215,11 +222,11 @@ function PatientDetail({ patient: p }: { patient: Patient }) {
         </div>
         <div className="flex items-center gap-2 rounded-lg bg-secondary/50 p-3">
           <Mail className="h-4 w-4 text-muted-foreground" />
-          <div><p className="text-xs text-muted-foreground">البريد</p><p className="text-sm font-medium truncate">{p.email}</p></div>
+          <div><p className="text-xs text-muted-foreground">البريد</p><p className="text-sm font-medium truncate">{p.email || '-'}</p></div>
         </div>
         <div className="flex items-center gap-2 rounded-lg bg-secondary/50 p-3">
           <MapPin className="h-4 w-4 text-muted-foreground" />
-          <div><p className="text-xs text-muted-foreground">العنوان</p><p className="text-sm font-medium">{p.address}</p></div>
+          <div><p className="text-xs text-muted-foreground">العنوان</p><p className="text-sm font-medium">{p.address || '-'}</p></div>
         </div>
         <div className="flex items-center gap-2 rounded-lg bg-secondary/50 p-3">
           <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -275,7 +282,7 @@ function PatientDetail({ patient: p }: { patient: Patient }) {
               <div key={o.id} className="flex items-center justify-between rounded-lg border p-3">
                 <div>
                   <p className="text-sm font-medium">{o.id}</p>
-                  <p className="text-xs text-muted-foreground">{formatDate(o.createdAt)} · {o.items.length} أصناف</p>
+                  <p className="text-xs text-muted-foreground">{formatDate(o.createdAt)} · {o.items?.length || 0} أصناف</p>
                 </div>
                 <div className="text-left">
                   <p className="text-sm font-bold">{formatCurrency(o.total)}</p>
