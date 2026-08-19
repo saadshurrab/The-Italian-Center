@@ -31,16 +31,20 @@ import {
   Wallet,
   Printer,
   X,
-  Eye,
   Package,
   CheckCircle2,
   AlertCircle,
 } from 'lucide-react';
-import { products, patients, prescriptions } from '@/lib/mock-data';
+import { useData } from '@/hooks/useData';
+import { getProducts, getPatients, getPrescriptions } from '@/lib/db';
 import { formatCurrency } from '@/lib/format';
-import type { Product, CartItem, PaymentMethod } from '@/lib/types';
+import type { Product, CartItem, PaymentMethod, Patient, Prescription } from '@/lib/types';
 
 export function PosModule() {
+  const { data: products = [], loading: loadingProducts } = useData<Product>(getProducts);
+  const { data: patients = [] } = useData<Patient>(getPatients);
+  const { data: prescriptions = [] } = useData<Prescription>(getPrescriptions);
+
   const [barcodeInput, setBarcodeInput] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [search, setSearch] = useState('');
@@ -60,19 +64,21 @@ export function PosModule() {
   const patientRx = useMemo(() => {
     if (!selectedPatient) return [];
     return prescriptions.filter((rx) => rx.patientId === selectedPatient);
-  }, [selectedPatient]);
+  }, [selectedPatient, prescriptions]);
 
   const filteredProducts = useMemo(() => {
     if (!search) return products;
     return products.filter((p) =>
-      p.name.includes(search) || p.barcode.includes(search) || p.sku.includes(search)
+      p.name?.includes(search) || p.barcode?.includes(search) || p.sku?.includes(search)
     );
-  }, [search]);
+  }, [search, products]);
 
-  const total = cart.reduce((sum, item) => sum + item.product.retail * item.qty * (1 - item.discount / 100), 0);
+  const total = useMemo(() => {
+    return cart.reduce((sum, item) => sum + (item.product.retail || 0) * item.qty * (1 - (item.discount || 0) / 100), 0);
+  }, [cart]);
+
   const dep = parseFloat(deposit) || 0;
-  const remaining = total - dep;
-  const netTotal = cart.reduce((sum, item) => sum + item.product.retail * item.qty * (1 - item.discount / 100), 0);
+  const remaining = Math.max(0, total - dep);
 
   function handleBarcodeScan(value: string) {
     if (!value) return;
@@ -135,17 +141,6 @@ export function PosModule() {
     setInvoiceOpen(false);
   }
 
-  const paymentIcons: Record<PaymentMethod, typeof CreditCard> = {
-    cash: Banknote,
-    card: CreditCard,
-    installments: Wallet,
-  };
-  const paymentLabels: Record<PaymentMethod, string> = {
-    cash: 'نقداً',
-    card: 'بطاقة ائتمان',
-    installments: 'تقسيط',
-  };
-
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-1">
@@ -185,9 +180,9 @@ export function PosModule() {
                 </div>
               )}
               {lastScanned && !scanError && (
-                <div className="mt-2 flex items-center gap-2 rounded-lg bg-success/10 p-2 animate-fade-in">
-                  <CheckCircle2 className="h-4 w-4 text-success" />
-                  <p className="text-sm text-success">تم إضافة: {lastScanned.name} ({formatCurrency(lastScanned.retail)})</p>
+                <div className="mt-2 flex items-center gap-2 rounded-lg bg-emerald-500/10 p-2 animate-fade-in">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                  <p className="text-sm text-emerald-600">تم إضافة: {lastScanned.name} ({formatCurrency(lastScanned.retail)})</p>
                 </div>
               )}
             </CardContent>
@@ -208,27 +203,31 @@ export function PosModule() {
                   className="pr-9"
                 />
               </div>
-              <div className="grid max-h-64 grid-cols-1 gap-2 overflow-y-auto scrollbar-thin sm:grid-cols-2">
-                {filteredProducts.map((p) => (
-                  <button
-                    key={p.id}
-                    onClick={() => addToCart(p)}
-                    className="flex items-center gap-3 rounded-lg border p-3 text-right transition-all hover:border-primary/40 hover:bg-primary/5"
-                  >
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-secondary">
-                      <Package className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{p.name}</p>
-                      <p className="text-xs text-muted-foreground font-mono">{p.barcode}</p>
-                    </div>
-                    <div className="text-left">
-                      <p className="text-sm font-bold text-primary">{formatCurrency(p.retail)}</p>
-                      <p className="text-[10px] text-muted-foreground">مخزون: {p.stock}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
+              {loadingProducts ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">جاري تحميل المنتجات...</p>
+              ) : (
+                <div className="grid max-h-64 grid-cols-1 gap-2 overflow-y-auto scrollbar-thin sm:grid-cols-2">
+                  {filteredProducts.map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => addToCart(p)}
+                      className="flex items-center gap-3 rounded-lg border p-3 text-right transition-all hover:border-primary/40 hover:bg-primary/5"
+                    >
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-secondary">
+                        <Package className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{p.name}</p>
+                        <p className="text-xs text-muted-foreground font-mono">{p.barcode}</p>
+                      </div>
+                      <div className="text-left">
+                        <p className="text-sm font-bold text-primary">{formatCurrency(p.retail)}</p>
+                        <p className="text-[10px] text-muted-foreground">مخزون: {p.stock}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -318,7 +317,7 @@ export function PosModule() {
                           <span className="text-xs text-muted-foreground">%</span>
                         </div>
                         <span className="mr-auto text-sm font-bold text-primary">
-                          {formatCurrency(item.product.retail * item.qty * (1 - item.discount / 100))}
+                          {formatCurrency((item.product.retail || 0) * item.qty * (1 - (item.discount || 0) / 100))}
                         </span>
                       </div>
                     </div>
@@ -362,11 +361,11 @@ export function PosModule() {
                 <div className="space-y-1.5 rounded-xl bg-secondary/50 p-3">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">صافي الإجمالي</span>
-                    <span className="font-bold">{formatCurrency(netTotal)}</span>
+                    <span className="font-bold">{formatCurrency(total)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">المدفوع</span>
-                    <span className="font-bold text-success">{formatCurrency(dep)}</span>
+                    <span className="font-bold text-emerald-600">{formatCurrency(dep)}</span>
                   </div>
                   <div className="flex justify-between text-sm border-t pt-1.5">
                     <span className="font-semibold">المتبقي</span>
@@ -434,7 +433,7 @@ function InvoiceModal({
 
       <div className="rounded-xl border-2 border-dashed border-border p-4">
         <div className="text-center">
-          <h3 className="font-display text-lg font-bold">المركز الإيطالي للبصريات</h3>
+          <h3 className="font-display text-lg font-bold">شركة الرؤيا النقية لمستلزمات مراكز البصريات</h3>
           <p className="text-xs text-muted-foreground">فاتورة ضريبية - رقم: INV-{Date.now().toString().slice(-6)}</p>
           <p className="text-xs text-muted-foreground">{new Date().toLocaleDateString('en-GB')}</p>
         </div>
@@ -463,7 +462,7 @@ function InvoiceModal({
                 </p>
               </div>
               <span className="font-medium">
-                {formatCurrency(item.product.retail * item.qty * (1 - item.discount / 100))}
+                {formatCurrency((item.product.retail || 0) * item.qty * (1 - (item.discount || 0) / 100))}
               </span>
             </div>
           ))}
@@ -476,7 +475,7 @@ function InvoiceModal({
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">الدفعة الأولى</span>
-            <span className="font-bold text-success">{formatCurrency(deposit)}</span>
+            <span className="font-bold text-emerald-600">{formatCurrency(deposit)}</span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">المتبقي عند التسليم</span>
