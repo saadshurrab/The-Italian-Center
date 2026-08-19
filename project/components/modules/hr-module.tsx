@@ -50,9 +50,10 @@ import {
   Phone,
   Award,
 } from 'lucide-react';
-import { employees, commissionRecords } from '@/lib/mock-data';
+import { useData } from '@/hooks/useData';
+import { getEmployees, getCommissionRecords } from '@/lib/db';
 import { formatCurrency, formatDate } from '@/lib/format';
-import type { Employee } from '@/lib/types';
+import type { Employee, CommissionRecord } from '@/lib/types';
 
 const statusConfig: Record<string, { label: string; color: string }> = {
   active: { label: 'نشط', color: 'success' },
@@ -61,6 +62,9 @@ const statusConfig: Record<string, { label: string; color: string }> = {
 };
 
 export function HrModule() {
+  const { data: employees = [], loading: loadingEmployees, error: errorEmployees } = useData<Employee>(getEmployees);
+  const { data: commissionRecords = [], loading: loadingCommissions, error: errorCommissions } = useData<CommissionRecord>(getCommissionRecords);
+
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [addOpen, setAddOpen] = useState(false);
@@ -68,16 +72,19 @@ export function HrModule() {
 
   const filtered = useMemo(() => {
     return employees.filter((e) => {
-      const matchSearch = e.name.includes(search) || e.role.includes(search);
+      const matchSearch = e.name?.includes(search) || e.role?.includes(search);
       const matchRole = roleFilter === 'all' || e.role === roleFilter;
       return matchSearch && matchRole;
     });
-  }, [search, roleFilter]);
+  }, [employees, search, roleFilter]);
 
-  const roles = Array.from(new Set(employees.map((e) => e.role)));
-  const totalPayroll = employees.reduce((s, e) => s + e.baseSalary + e.commission, 0);
-  const totalCommission = employees.reduce((s, e) => s + e.commission, 0);
-  const totalAdvances = employees.reduce((s, e) => s + e.advances, 0);
+  const roles = Array.from(new Set(employees.map((e) => e.role))).filter(Boolean);
+  const totalPayroll = employees.reduce((s, e) => s + (e.baseSalary || 0) + (e.commission || 0), 0);
+  const totalCommission = employees.reduce((s, e) => s + (e.commission || 0), 0);
+  const totalAdvances = employees.reduce((s, e) => s + (e.advances || 0), 0);
+
+  if (loadingEmployees || loadingCommissions) return <p className="p-4 text-center">جاري تحميل البيانات...</p>;
+  if (errorEmployees || errorCommissions) return <p className="p-4 text-center text-red-500">حدث خطأ في تحميل البيانات</p>;
 
   return (
     <div className="space-y-6">
@@ -164,14 +171,14 @@ export function HrModule() {
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {filtered.map((emp) => {
-                  const cfg = statusConfig[emp.status];
+                  const cfg = statusConfig[emp.status] || { label: emp.status, color: 'muted-foreground' };
                   return (
                     <Card key={emp.id} className="cursor-pointer border-border/60 transition-all hover:shadow-md hover:border-primary/30" onClick={() => setDetail(emp)}>
                       <CardContent className="p-4">
                         <div className="flex items-start gap-3">
                           <Avatar className="h-12 w-12 border-2 border-primary/20">
                             <AvatarFallback className="bg-primary/10 text-primary font-bold">
-                              {emp.name.split(' ')[1]?.[0]}
+                              {emp.name?.split(' ')[1]?.[0] || emp.name?.[0]}
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex-1 min-w-0">
@@ -255,9 +262,9 @@ export function HrModule() {
 }
 
 function EmployeeDetail({ employee: emp }: { employee: Employee }) {
-  const cfg = statusConfig[emp.status];
-  const netSalary = emp.baseSalary + emp.commission - emp.advances - emp.deductions;
-  const attendancePct = (emp.attendance / 26) * 100;
+  const cfg = statusConfig[emp.status] || { label: emp.status, color: 'muted-foreground' };
+  const netSalary = (emp.baseSalary || 0) + (emp.commission || 0) - (emp.advances || 0) - (emp.deductions || 0);
+  const attendancePct = ((emp.attendance || 0) / 26) * 100;
 
   return (
     <div className="space-y-4">
@@ -265,7 +272,7 @@ function EmployeeDetail({ employee: emp }: { employee: Employee }) {
         <DialogTitle className="flex items-center gap-3">
           <Avatar className="h-12 w-12 border-2 border-primary/20">
             <AvatarFallback className="bg-primary/10 text-primary font-bold">
-              {emp.name.split(' ')[1]?.[0]}
+              {emp.name?.split(' ')[1]?.[0] || emp.name?.[0]}
             </AvatarFallback>
           </Avatar>
           <div>
