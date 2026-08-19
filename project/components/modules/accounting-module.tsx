@@ -35,12 +35,10 @@ import {
   TabsTrigger,
 } from '@/components/ui/tabs';
 import {
-  Calculator,
   Banknote,
   CreditCard,
   Wallet,
   TrendingUp,
-  TrendingDown,
   DollarSign,
   Receipt,
   Plus,
@@ -50,9 +48,10 @@ import {
   FileBarChart,
   AlertCircle,
 } from 'lucide-react';
-import { orders, expenses, cashRegisterEntries, dailyReports } from '@/lib/mock-data';
+import { useData } from '@/hooks/useData';
+import { getOrders, getExpenses, getCashRegisterEntries, getDailyReports } from '@/lib/db';
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/format';
-import type { PaymentMethod } from '@/lib/types';
+import type { Order, Expense, CashRegisterEntry, DailyReport } from '@/lib/types';
 import {
   AreaChart,
   Area,
@@ -63,25 +62,44 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
-  Cell,
 } from 'recharts';
 
 export function AccountingModule() {
   const [addExpenseOpen, setAddExpenseOpen] = useState(false);
 
-  const totalCashSales = cashRegisterEntries
-    .filter((e) => e.type === 'sale' && e.paymentMethod === 'cash')
-    .reduce((s, e) => s + e.amount, 0);
-  const totalCardSales = cashRegisterEntries
-    .filter((e) => e.type === 'sale' && e.paymentMethod === 'card')
-    .reduce((s, e) => s + e.amount, 0);
-  const totalDeposits = cashRegisterEntries
-    .filter((e) => e.type === 'deposit')
-    .reduce((s, e) => s + e.amount, 0);
-  const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
-  const outstandingReceivables = orders
-    .filter((o) => o.status !== 'fulfilled')
-    .reduce((s, o) => s + o.remaining, 0);
+  const { data: orders = [] } = useData<Order>(getOrders);
+  const { data: expenses = [] } = useData<Expense>(getExpenses);
+  const { data: cashRegisterEntries = [] } = useData<CashRegisterEntry>(getCashRegisterEntries);
+  const { data: dailyReports = [] } = useData<DailyReport>(getDailyReports);
+
+  const totalCashSales = useMemo(() => {
+    return cashRegisterEntries
+      .filter((e) => e.type === 'sale' && e.paymentMethod === 'cash')
+      .reduce((s, e) => s + (e.amount || 0), 0);
+  }, [cashRegisterEntries]);
+
+  const totalCardSales = useMemo(() => {
+    return cashRegisterEntries
+      .filter((e) => e.type === 'sale' && e.paymentMethod === 'card')
+      .reduce((s, e) => s + (e.amount || 0), 0);
+  }, [cashRegisterEntries]);
+
+  const totalDeposits = useMemo(() => {
+    return cashRegisterEntries
+      .filter((e) => e.type === 'deposit')
+      .reduce((s, e) => s + (e.amount || 0), 0);
+  }, [cashRegisterEntries]);
+
+  const totalExpenses = useMemo(() => {
+    return expenses.reduce((s, e) => s + (e.amount || 0), 0);
+  }, [expenses]);
+
+  const outstandingReceivables = useMemo(() => {
+    return orders
+      .filter((o) => o.status !== 'fulfilled')
+      .reduce((s, o) => s + (o.remaining || 0), 0);
+  }, [orders]);
+
   const netRevenue = totalCashSales + totalCardSales + totalDeposits - totalExpenses;
 
   const kpis = [
@@ -216,10 +234,11 @@ export function AccountingModule() {
                         sale: { label: 'بيع', icon: ArrowUpCircle, color: 'success' },
                         expense: { label: 'مصروف', icon: ArrowDownCircle, color: 'destructive' },
                         deposit: { label: 'دفعة', icon: PiggyBank, color: 'accent' },
-                      }[entry.type];
+                      }[entry.type] || { label: 'غير محدد', icon: ArrowUpCircle, color: 'primary' };
+                      
                       const TypeIcon = typeConfig.icon;
-                      const payIcon = entry.paymentMethod === 'cash' ? Banknote : entry.paymentMethod === 'card' ? CreditCard : Wallet;
-                      const PayIcon = payIcon;
+                      const PayIcon = entry.paymentMethod === 'cash' ? Banknote : entry.paymentMethod === 'card' ? CreditCard : Wallet;
+                      
                       return (
                         <TableRow key={entry.id} className="transition-colors hover:bg-secondary/30">
                           <TableCell>
@@ -276,7 +295,7 @@ export function AccountingModule() {
                   </TableHeader>
                   <TableBody>
                     {orders
-                      .filter((o) => o.status !== 'fulfilled' && o.remaining > 0)
+                      .filter((o) => o.status !== 'fulfilled' && (o.remaining || 0) > 0)
                       .map((order) => (
                         <TableRow key={order.id} className="transition-colors hover:bg-secondary/30">
                           <TableCell className="font-mono text-sm">{order.id}</TableCell>
