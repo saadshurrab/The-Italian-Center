@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import { navItems, type ModuleKey } from '@/lib/navigation';
-import { notifications } from '@/lib/mock-data';
+import { useData } from '@/hooks/useData';
+import { getNotifications } from '@/lib/db';
+import type { Notification } from '@/lib/types';
 import { formatDateTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -48,7 +50,9 @@ export function AppShell() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const activeItem = navItems.find((item) => item.key === activeModule)!;
+  const { data: notifications = [] } = useData<Notification>(getNotifications);
+
+  const activeItem = navItems.find((item) => item.key === activeModule) || navItems[0];
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   const SidebarContent = () => (
@@ -170,17 +174,21 @@ export function AppShell() {
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <div className="max-h-80 overflow-y-auto scrollbar-thin">
-                  {notifications.map((n) => (
-                    <DropdownMenuItem key={n.id} className="flex flex-col items-start gap-1 py-3">
-                      <div className="flex w-full items-start gap-2">
-                        <span className={cn('mt-1.5 h-2 w-2 shrink-0 rounded-full', n.read ? 'bg-muted-foreground/30' : 'bg-primary')} />
-                        <div className="flex-1">
-                          <p className="text-sm leading-snug">{n.message}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">{formatDateTime(n.time)}</p>
+                  {notifications.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-muted-foreground">لا يوجد إشعارات</div>
+                  ) : (
+                    notifications.map((n) => (
+                      <DropdownMenuItem key={n.id} className="flex flex-col items-start gap-1 py-3">
+                        <div className="flex w-full items-start gap-2">
+                          <span className={cn('mt-1.5 h-2 w-2 shrink-0 rounded-full', n.read ? 'bg-muted-foreground/30' : 'bg-primary')} />
+                          <div className="flex-1">
+                            <p className="text-sm leading-snug">{n.message}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{formatDateTime(n.time)}</p>
+                          </div>
                         </div>
-                      </div>
-                    </DropdownMenuItem>
-                  ))}
+                      </DropdownMenuItem>
+                    ))
+                  )}
                 </div>
               </DropdownMenuContent>
             </DropdownMenu>
