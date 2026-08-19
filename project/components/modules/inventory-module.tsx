@@ -41,7 +41,8 @@ import {
   CalendarClock,
   Boxes,
 } from 'lucide-react';
-import { products } from '@/lib/mock-data';
+import { useData } from '@/hooks/useData';
+import { getProducts } from '@/lib/db';
 import { formatCurrency, daysUntil } from '@/lib/format';
 import type { Product, ProductCategory } from '@/lib/types';
 
@@ -53,6 +54,8 @@ const categoryConfig: Record<ProductCategory, { label: string; icon: typeof Glas
 };
 
 export function InventoryModule() {
+  const { data: products = [], loading, error } = useData<Product>(getProducts);
+
   const [search, setSearch] = useState('');
   const [catFilter, setCatFilter] = useState<string>('all');
   const [page, setPage] = useState(0);
@@ -62,18 +65,25 @@ export function InventoryModule() {
 
   const filtered = useMemo(() => {
     return products.filter((p) => {
-      const matchSearch = p.name.includes(search) || p.sku.includes(search) || p.barcode.includes(search) || p.brand.includes(search);
+      const matchSearch =
+        p.name?.includes(search) ||
+        p.sku?.includes(search) ||
+        p.barcode?.includes(search) ||
+        p.brand?.includes(search);
       const matchCat = catFilter === 'all' || p.category === catFilter;
       return matchSearch && matchCat;
     });
-  }, [search, catFilter]);
+  }, [products, search, catFilter]);
 
   const paginated = filtered.slice(page * pageSize, (page + 1) * pageSize);
-  const totalPages = Math.ceil(filtered.length / pageSize);
+  const totalPages = Math.ceil(filtered.length / pageSize) || 1;
 
-  const lowStock = products.filter((p) => p.stock <= p.minStock);
-  const expiringSoon = products.filter((p) => p.expiryDate && daysUntil(p.expiryDate) < 90);
-  const totalValue = products.reduce((s, p) => s + p.stock * p.cost, 0);
+  const lowStock = useMemo(() => products.filter((p) => p.stock <= p.minStock), [products]);
+  const expiringSoon = useMemo(() => products.filter((p) => p.expiryDate && daysUntil(p.expiryDate) < 90), [products]);
+  const totalValue = useMemo(() => products.reduce((s, p) => s + (p.stock || 0) * (p.cost || 0), 0), [products]);
+
+  if (loading) return <p className="p-4 text-center text-muted-foreground">جاري تحميل بيانات المخزون...</p>;
+  if (error) return <p className="p-4 text-center text-destructive">حدث خطأ في تحميل بيانات المخزون</p>;
 
   return (
     <div className="space-y-6">
@@ -91,8 +101,8 @@ export function InventoryModule() {
             <Card key={cat} className="border-border/60 shadow-sm transition-all hover:shadow-md">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className={`flex h-11 w-11 items-center justify-center rounded-xl bg-${cfg.color}/10`}>
-                    <Icon className={`h-5 w-5 text-${cfg.color}`} />
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10">
+                    <Icon className="h-5 w-5 text-primary" />
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">{cfg.label}</p>
@@ -246,16 +256,16 @@ export function InventoryModule() {
               </TableHeader>
               <TableBody>
                 {paginated.map((p) => {
-                  const cfg = categoryConfig[p.category];
+                  const cfg = categoryConfig[p.category] || { label: p.category, icon: Package, color: 'primary' };
                   const Icon = cfg.icon;
-                  const stockPct = Math.min((p.stock / (p.minStock * 3)) * 100, 100);
+                  const stockPct = p.minStock ? Math.min((p.stock / (p.minStock * 3)) * 100, 100) : 100;
                   const isLow = p.stock <= p.minStock;
                   return (
                     <TableRow key={p.id} className="cursor-pointer transition-colors hover:bg-secondary/30" onClick={() => setDetail(p)}>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <div className={`flex h-8 w-8 items-center justify-center rounded-lg bg-${cfg.color}/10`}>
-                            <Icon className={`h-4 w-4 text-${cfg.color}`} />
+                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                            <Icon className="h-4 w-4 text-primary" />
                           </div>
                           <div>
                             <p className="text-sm font-medium">{p.name}</p>
@@ -264,7 +274,7 @@ export function InventoryModule() {
                         </div>
                       </TableCell>
                       <TableCell className="font-mono text-xs">{p.barcode}</TableCell>
-                      <TableCell><Badge variant="outline" className={`border-${cfg.color}/30 text-${cfg.color}`}>{cfg.label}</Badge></TableCell>
+                      <TableCell><Badge variant="outline">{cfg.label}</Badge></TableCell>
                       <TableCell>
                         <div className="w-24">
                           <div className="flex items-center justify-between text-xs mb-1">
@@ -312,15 +322,16 @@ export function InventoryModule() {
 }
 
 function ProductDetail({ product }: { product: Product }) {
-  const cfg = categoryConfig[product.category];
+  const cfg = categoryConfig[product.category] || { label: product.category, icon: Package, color: 'primary' };
   const Icon = cfg.icon;
-  const margin = ((product.retail - product.cost) / product.retail * 100).toFixed(0);
+  const margin = product.retail ? (((product.retail - product.cost) / product.retail) * 100).toFixed(0) : '0';
+
   return (
     <div className="space-y-4">
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2">
-          <div className={`flex h-10 w-10 items-center justify-center rounded-xl bg-${cfg.color}/10`}>
-            <Icon className={`h-5 w-5 text-${cfg.color}`} />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+            <Icon className="h-5 w-5 text-primary" />
           </div>
           {product.name}
         </DialogTitle>
