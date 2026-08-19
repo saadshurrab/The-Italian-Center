@@ -40,7 +40,6 @@ import {
   Cell,
 } from 'recharts';
 
-// البيانات المؤقتة الخاصة بالرسوم البيانية محلياً تجنباً لخطأ المستوردات
 const revenueData = [
   { day: 'السبت', revenue: 3200 },
   { day: 'الأحد', revenue: 4500 },
@@ -64,11 +63,16 @@ export function DashboardModule() {
   const { data: employees = [] } = useData<Employee>(getEmployees);
   const { data: prescriptions = [] } = useData<Prescription>(getPrescriptions);
 
-  const todayRevenue = orders.reduce((sum, o) => sum + (o.deposit || 0), 0);
-  const pendingLabOrders = orders.filter((o) => o.status === 'in_lab').length;
-  const todayExams = prescriptions.length;
-  const activeStaff = employees.filter((e) => e.status === 'active').length;
-  const lowStockItems = products.filter((p) => p.stock <= p.minStock);
+  const safeOrders = Array.isArray(orders) ? orders : [];
+  const safeProducts = Array.isArray(products) ? products : [];
+  const safeEmployees = Array.isArray(employees) ? employees : [];
+  const safePrescriptions = Array.isArray(prescriptions) ? prescriptions : [];
+
+  const todayRevenue = safeOrders.reduce((sum, o) => sum + (o?.deposit || 0), 0);
+  const pendingLabOrders = safeOrders.filter((o) => o?.status === 'in_lab').length;
+  const todayExams = safePrescriptions.length;
+  const activeStaff = safeEmployees.filter((e) => e?.status === 'active').length;
+  const lowStockItems = safeProducts.filter((p) => p && p.stock <= p.minStock);
 
   const kpis = [
     {
@@ -98,7 +102,7 @@ export function DashboardModule() {
     {
       label: 'موظفون في الخدمة',
       value: formatNumber(activeStaff),
-      change: `من ${employees.length}`,
+      change: `من ${safeEmployees.length}`,
       trend: 'neutral' as 'up' | 'down' | 'neutral',
       icon: Users,
       color: 'success',
@@ -256,8 +260,8 @@ export function DashboardModule() {
             <CardTitle className="font-display text-base font-bold">آخر الطلبات</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {orders.slice(0, 4).map((order) => {
-              const cfg = statusConfig[order.status] || statusConfig.pending;
+            {safeOrders.slice(0, 4).map((order) => {
+              const cfg = statusConfig[order?.status] || statusConfig.pending;
               const StatusIcon = cfg.icon;
               return (
                 <div key={order.id} className="flex items-center gap-3">
@@ -272,7 +276,7 @@ export function DashboardModule() {
                 </div>
               );
             })}
-            {orders.length === 0 && (
+            {safeOrders.length === 0 && (
               <p className="text-sm text-muted-foreground text-center py-4">لا توجد طلبات حتى الآن</p>
             )}
           </CardContent>
@@ -283,11 +287,11 @@ export function DashboardModule() {
             <CardTitle className="font-display text-base font-bold">الموظفون النشطون</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {employees.filter((e) => e.status === 'active').slice(0, 4).map((emp) => (
+            {safeEmployees.filter((e) => e?.status === 'active').slice(0, 4).map((emp) => (
               <div key={emp.id} className="flex items-center gap-3">
                 <Avatar className="h-9 w-9">
                   <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
-                    {emp.name.split(' ')[1]?.[0] || emp.name[0]}
+                    {emp.name?.split(' ')?.[1]?.[0] || emp.name?.[0] || 'م'}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
@@ -297,7 +301,7 @@ export function DashboardModule() {
                 <span className="h-2 w-2 rounded-full bg-success" />
               </div>
             ))}
-            {employees.length === 0 && (
+            {safeEmployees.length === 0 && (
               <p className="text-sm text-muted-foreground text-center py-4">لا يوجد موظفون في الخدمة حالياً</p>
             )}
           </CardContent>
