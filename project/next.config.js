@@ -1,8 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // تم إزالة output: 'export' للسماح بتشغيل السيرفر الديناميكي وتفادي مشاكل الكاش والـ Chunks
+  output: 'export', // ينشئ مجلد out تلقائياً عند البناء
   typescript: {
-    ignoreBuildErrors: true, // يتجاوز أخطاء TypeScript لتسريع عملية البناء
+    ignoreBuildErrors: true,
   },
   eslint: {
     ignoreDuringBuilds: true,
